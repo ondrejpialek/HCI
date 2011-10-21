@@ -119,6 +119,16 @@
             background: url(Images/open.png) no-repeat center 2px;
         }
         
+        .close-button
+        {
+            background: url(Images/close.png) no-repeat center 2px;
+        }
+        
+        .delete-button
+        {
+            background: url(Images/delete.png) no-repeat center 2px;
+        }
+        
         .load-area-button
         {
             background: url(Images/load.png) no-repeat center 2px;
@@ -173,6 +183,11 @@
             padding: 0;
             height: 80px;
             width: 130px;
+        }
+
+        #areas
+        {
+            color: #6b6b6b;
         }
     </style>
 </head>
@@ -253,8 +268,20 @@
                 </div>
             </div>
 
+            <div class="button close-button">
+                <div>
+                    close image
+                </div>
+            </div>
+
             <div class="button add-region-button">
                 <div>new area</div>
+            </div>
+
+            <div class="button delete-button">
+                <div>
+                    delete area
+                </div>
             </div>
 
             <div class="button load-area-button">
@@ -394,6 +421,7 @@
 
                 var images = [];
                 var currentImage;
+                var currentImageUi;
                 var currentArea;
                 var canvases = new Dictionary();
                 var areas = new Dictionary();
@@ -404,20 +432,22 @@
 
                 function clearUi() {
                     canvases.clear();
+                    areas.clear();
                     $board.find("canvas").remove();
                     $areaList.find(".area").remove();
-                    $board.find("img").attr("src", null);
+                    $board.find("img").attr("src", null).hide();
                 }
 
                 function addImage(filename, src) {
                     var image = new Image(filename, src);
                     images.push(image);
-                    $('<li class="thumbnail"><img src="' + image.src + '" title="' + image.name + '" /><p>' + image.name + '<p/></li>')
-                        .appendTo("#images ul")
+                    var img = $('<li class="thumbnail"><img src="' + image.src + '" title="' + image.name + '" /><p>' + image.name + '<p/></li>');
+                    img.appendTo("#images ul")
                         .data("image", image);
 
                     if (images.length == 1) {
                         selectImage(image);
+                        currentImageUi = img;
                     }
                 }
 
@@ -429,7 +459,7 @@
                     canvas[0].width = imageTag.width();
                     canvas.appendTo($board);
                     canvases.push(area, canvas);
-
+                    
                     return area;
                 }
 
@@ -440,7 +470,7 @@
                     var list = areaMarkup.find("ul");
                     for (var i = 0; i < area.points.length; i++) {
                         var point = area.points[i];
-                        list.append('<li>point ' + i + ': (' + point.x + '; ' + point.y + ')</li>');
+                        list.append('<li>corner ' + (i + 1) + ': (' + point.x + '; ' + point.y + ')</li>');
                     }
                     
                     areaMarkup.hide().appendTo($areaList);
@@ -456,6 +486,8 @@
                     });
                     areaMarkup.slideDown();
                     areaMarkup.data("area", area);
+
+                    areas.push(area, areaMarkup);
                 }
 
                 function selectImage(image) {
@@ -465,6 +497,7 @@
 
                     var imageTag = $board.find("img");
                     imageTag.attr("src", image.src);
+                    imageTag.show();
 
                     for (var i = 0; i < image.areas.length; i++) {
                         var area = image.areas[i];
@@ -565,8 +598,50 @@
 
                 $imagePanel.find("li").live("click", function () {
                     var image = $(this).data("image");
+                    currentImageUi = $(this);
                     selectImage(image);
                     return false;
+                });
+
+                $toolbar.find(".close-button").click(function () {
+                    if (currentImageUi) {
+                        clearUi();
+                        currentImageUi.remove();
+                        currentImageUi = null;
+                        var pos = images.indexOf(currentImage);
+                        images.splice(pos, 1);
+                        currentImage = null;
+                        var imgs = $imagePanel.find(".image");
+                        if (imgs.length > 0) {
+                            $(imgs[0]).click();
+                        }
+                    }
+                });
+
+                $toolbar.find(".delete-button").click(function () {
+                    if (!currentArea && !currentImage)
+                        return;
+
+                    if (!currentArea && currentImage.areas.length == 0)
+                        return;
+
+                    if (!currentArea)
+                        currentArea = currentImage.areas[currentImage.areas.length - 1];
+
+                    currentImage.removeArea(currentArea);
+                    var ui = areas.get(currentArea);
+                    ui.slideUp(function () {
+                        $(this).remove();
+                    });
+                    var canvas = canvases.get(currentArea);
+                    $(canvas).remove();
+                    if (currentImage.areas.length > 0) {
+                        currentArea = currentImage.areas[currentImage.areas.length - 1];
+                        if (currentArea.closed)
+                            currentArea = null;
+                    } else {
+                        currentArea = null;
+                    }
                 });
 
                 $toolbar.find(".open-file-button").click(function () {
@@ -574,9 +649,7 @@
                 });
 
                 $toolbar.find(".load-area-button").click(function () {
-                    alert("load clicked");
                     if (currentImage) {
-                        alert("triggering edit");
                         $openAreaDialog.click();
                     } else {
                         alert("Please open a picture to annotate first.");
@@ -627,28 +700,21 @@
                 }
 
                 $openAreaDialog.change(function (e) {
-                    alert("files selected");
                     var files = e.target.files; // FileList object
-                    alert("number: " + files.length);
                     // Loop through the FileList and render image files as thumbnails.
                     for (var i = 0, file; file = files[i]; i++) {
 
                         // Only process image files.
                         if (!file.type.match('text.*')) {
-                            alert("file " + i + "non-textual! skipping.");
                             continue;
                         }
 
                         var reader = new FileReader();
-                        alert("new reader: " + reader);
 
                         // Closure to capture the file information.
                         reader.onload = function (e) {
-                            alert("file read, loading areas");
-                            alert("result:" + e.target.result);
                             loadAreas(e.target.result);
                         };
-                        alert("reading");
                         // Read in the image file as a data URL.
                         reader.readAsText(file);
                     }
@@ -700,14 +766,20 @@
                     draggedPoint.x = current.x;
                     draggedPoint.y = current.y;
                     repaintArea(currentArea);
+                    var areaUi = areas.get(currentArea);
+                    var index = currentArea.points.indexOf(draggedPoint);
+                    areaUi.find("li:eq(" + index + ")").html('corner ' + (index + 1) + ': (' + draggedPoint.x + '; ' + draggedPoint.y + ')');
                 }
 
                 function addPoint(point) {
                     if (!currentArea) {
                         createAndSelectArea();
                     }
-                    currentArea.points.push(coords);
+                    currentArea.points.push(point);
                     repaintArea(currentArea);
+
+                    var areaUi = areas.get(currentArea);
+                    areaUi.find("ul").append('<li>corner ' + currentArea.points.length + ': (' + point.x + '; ' + point.y + ')</li>');
                 }
 
                 $board.mousedown(function (e) {
