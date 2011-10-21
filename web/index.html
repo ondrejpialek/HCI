@@ -396,6 +396,7 @@
                 var currentImage;
                 var currentArea;
                 var canvases = new Dictionary();
+                var areas = new Dictionary();
 
                 this.exportAreas = function () {
                     return JSON.stringify(currentImage.areas);
@@ -642,13 +643,11 @@
                         alert("new reader: " + reader);
 
                         // Closure to capture the file information.
-                        reader.onload = (function (theFile) {
-                            return function (e) {
-                                alert("file read, loading areas");
-                                alert("result:" + e.target.result);
-                                loadAreas(e.target.result);
-                            };
-                        })(file);
+                        reader.onload = function (e) {
+                            alert("file read, loading areas");
+                            alert("result:" + e.target.result);
+                            loadAreas(e.target.result);
+                        };
                         alert("reading");
                         // Read in the image file as a data URL.
                         reader.readAsText(file);
@@ -700,6 +699,14 @@
                     var current = getLocalCoords(mouseEvent);
                     draggedPoint.x = current.x;
                     draggedPoint.y = current.y;
+                    repaintArea(currentArea);
+                }
+
+                function addPoint(point) {
+                    if (!currentArea) {
+                        createAndSelectArea();
+                    }
+                    currentArea.points.push(coords);
                     repaintArea(currentArea);
                 }
 
@@ -758,11 +765,7 @@
 
                             switch (currentMode) {
                                 case Mode.Click:
-                                    if (!currentArea) {
-                                        createAndSelectArea();
-                                    }
-                                    currentArea.points.push(coords);
-                                    repaintArea(currentArea);
+                                    addPoint(coords);
                                     break;
                                 case Mode.CloseArea:
                                     currentArea.closed = true;
