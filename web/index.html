@@ -573,7 +573,9 @@
                 });
 
                 $toolbar.find(".load-area-button").click(function () {
+                    alert("load clicked");
                     if (currentImage) {
+                        alert("triggering edit");
                         $openAreaDialog.click();
                     } else {
                         alert("Please open a picture to annotate first.");
@@ -624,25 +626,30 @@
                 }
 
                 $openAreaDialog.change(function (e) {
+                    alert("files selected");
                     var files = e.target.files; // FileList object
-
+                    alert("number: " + files.length);
                     // Loop through the FileList and render image files as thumbnails.
                     for (var i = 0, file; file = files[i]; i++) {
 
                         // Only process image files.
                         if (!file.type.match('text.*')) {
+                            alert("file " + i + "non-textual! skipping.");
                             continue;
                         }
 
                         var reader = new FileReader();
+                        alert("new reader: " + reader);
 
                         // Closure to capture the file information.
                         reader.onload = (function (theFile) {
                             return function (e) {
+                                alert("file read, loading areas");
+                                alert("result:" + e.target.result);
                                 loadAreas(e.target.result);
                             };
                         })(file);
-
+                        alert("reading");
                         // Read in the image file as a data URL.
                         reader.readAsText(file);
                     }
